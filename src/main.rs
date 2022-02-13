@@ -1,11 +1,13 @@
 use std::{time, thread};
-use reqwest::blocking::{Client, Request, ClientBuilder};
+use reqwest::blocking::{Client, ClientBuilder};
 use reqwest::Certificate;
-use inputbot::{KeybdKey::*, MouseButton::*, *};
+use enigo;
+use enigo::{Enigo, Key, KeyboardControllable};
 
 extern "win64" {
     pub fn GetForegroundWindow() -> i32;
     pub fn GetWindowTextA(hwnd: i32, str_ptr: *mut i8, size: i32);
+
 }
 
 unsafe fn ptr_to_string(ptr: & *mut i8, buf_size: u32) -> String {
@@ -52,18 +54,18 @@ fn main() {
     let mut payload_sent = false;
 
     let client = make_client();
-    thread::spawn( || handle_input_events());
+    let mut enigo = Enigo::new();
 
     loop {
         if is_rito(&client) {
             println!("riot is running");
             println!("wait for game to load");
-            thread::sleep(time::Duration::from_secs(60*2));
+            thread::sleep(time::Duration::from_secs(30*1));
             loop {
                 if !payload_sent {
                     if unsafe {is_rito_full()} {
                         println!("sending payload");
-                        send_payload();
+                        send_payload(&mut enigo);
                         payload_sent = true;
                     }
                 }
@@ -79,18 +81,27 @@ fn main() {
     }
 }
 
-fn send_payload() {
-    LShiftKey.press();
-    EnterKey.press();
-    EnterKey.release();
-    LShiftKey.release();
+fn send_payload(enigo: &mut Enigo) {
+    enigo.key_click(enigo::Key::Return);
 
-    KeySequence(" OwO").send();
+    enigo.key_click(Key::Raw(191));
+    enigo.key_click(Key::Layout('a'));
+    enigo.key_click(Key::Layout('l'));
+    enigo.key_click(Key::Layout('l'));
 
-    LShiftKey.press();
-    KeybdKey::from(191).press();
-    KeybdKey::from(191).release();
-    LShiftKey.release();
-    EnterKey.press();
-    EnterKey.release();
+    enigo.key_click(Key::Space);
+
+    enigo.key_down(Key::Shift);
+    enigo.key_click(Key::Layout('o'));
+    enigo.key_up(Key::Shift);
+    enigo.key_click(Key::Layout('w'));
+    enigo.key_down(Key::Shift);
+    enigo.key_click(Key::Layout('o'));
+    enigo.key_up(Key::Shift);
+
+    enigo.key_down(Key::Shift);
+    enigo.key_click(Key::Raw(191));
+    enigo.key_up(Key::Shift);
+
+    enigo.key_click(enigo::Key::Return);
 }
