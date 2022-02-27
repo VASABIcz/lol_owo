@@ -1,27 +1,33 @@
-use std::{time, thread};
+mod keyboard_api;
+
+use std::fmt::Write;
+use std::thread::sleep;
+use std::time::Duration;
 use reqwest::blocking::{Client, ClientBuilder};
 use reqwest::Certificate;
-use enigo;
-use enigo::{Enigo, Key, KeyboardControllable};
+use serde_json::{Result, Value};
+use winapi::um::winuser::{INPUT, INPUT_KEYBOARD, INPUT_u, KEYBDINPUT, SendInput};
+use crate::keyboard_api::{DxKeys, key_down, key_press, key_up, WinapiKeys};
+
+const KEYUP: u32 = 0x0002;
+const KEYDW: u32 = 0x0;
 
 extern "win64" {
     pub fn GetForegroundWindow() -> i32;
     pub fn GetWindowTextA(hwnd: i32, str_ptr: *mut i8, size: i32);
-
 }
 
 unsafe fn ptr_to_string(ptr: & *mut i8, buf_size: u32) -> String {
-    let mut buf: Vec<char> = Vec::new();
+    let mut res = String::new();
 
     for x in 0..buf_size {
         let n = *ptr.offset(x as isize) as u8;
         if n == 0 {
-            return String::from_iter(buf);
+            return res;
         }
-        let c = char::from(*ptr.offset(x as isize) as u8);
-        buf.push(c);
+        res.write_char(n as char);
     }
-    String::new()
+    res
 }
 
 fn is_rito(client: &Client) -> bool {
@@ -38,6 +44,7 @@ unsafe fn is_rito_full() -> bool {
 
     GetWindowTextA(w, buf, 500);
     let str = ptr_to_string(&buf, 100);
+    drop(buf);
     if str == "League of Legends (TM) Client" {
         return true;
     }
@@ -50,22 +57,38 @@ fn make_client() -> Client {
         .build().unwrap()
 }
 
+fn is_loaded(client: &Client) -> bool {
+    match client.execute(client.get("https://127.0.0.1:2999/liveclientdata/eventdata").build().unwrap()) {
+        Ok(it) => {
+            let data = it.text().unwrap();
+            let v: Value = serde_json::from_str(&data).unwrap();
+            let events = match v["Events"].as_array() {
+                Some(v) => v.len(),
+                None => 0
+            };
+            if events > 0 {
+                return true
+            }
+            false
+        },
+        Err(_) => false
+    }
+}
+
 fn main() {
     let mut payload_sent = false;
 
     let client = make_client();
-    let mut enigo = Enigo::new();
-
+    send_payload();
     loop {
         if is_rito(&client) {
             println!("riot is running");
             println!("wait for game to load");
-            thread::sleep(time::Duration::from_secs(30*1));
             loop {
-                if !payload_sent {
+                if !payload_sent && is_loaded(&client) {
                     if unsafe {is_rito_full()} {
                         println!("sending payload");
-                        send_payload(&mut enigo);
+                        send_payload();
                         payload_sent = true;
                     }
                 }
@@ -81,27 +104,26 @@ fn main() {
     }
 }
 
-fn send_payload(enigo: &mut Enigo) {
-    enigo.key_click(enigo::Key::Return);
+fn send_payload() {
+    key_press(WinapiKeys::ENTERkey, DxKeys::keyEnter); // ENTER
 
-    enigo.key_click(Key::Raw(191));
-    enigo.key_click(Key::Layout('a'));
-    enigo.key_click(Key::Layout('l'));
-    enigo.key_click(Key::Layout('l'));
+    key_press(WinapiKeys::Slashkey, DxKeys::keyForwardSlash);  // /
+    key_press(WinapiKeys::Akey,DxKeys::keyA); // a
+    key_press(WinapiKeys::Lkey,DxKeys::keyL); // l
+    key_press(WinapiKeys::Lkey,DxKeys::keyL); // l
 
-    enigo.key_click(Key::Space);
+    key_press(WinapiKeys::SPACEBAR, DxKeys::keySpacebar); // ' '
 
-    enigo.key_down(Key::Shift);
-    enigo.key_click(Key::Layout('o'));
-    enigo.key_up(Key::Shift);
-    enigo.key_click(Key::Layout('w'));
-    enigo.key_down(Key::Shift);
-    enigo.key_click(Key::Layout('o'));
-    enigo.key_up(Key::Shift);
+    key_down(WinapiKeys::SHIFTkey, DxKeys::keyLeftShift);
+    key_press(WinapiKeys::Okey, DxKeys::keyO); // o
+    key_up(WinapiKeys::SHIFTkey, DxKeys::keyLeftShift);
+    key_press(WinapiKeys::Wkey, DxKeys::keyW); // w
+    key_down(WinapiKeys::SHIFTkey, DxKeys::keyLeftShift);
+    key_press(WinapiKeys::Okey, DxKeys::keyO); // o
+    key_up(WinapiKeys::SHIFTkey, DxKeys::keyLeftShift);
 
-    enigo.key_down(Key::Shift);
-    enigo.key_click(Key::Raw(191));
-    enigo.key_up(Key::Shift);
-
-    enigo.key_click(enigo::Key::Return);
+    key_down(WinapiKeys::SHIFTkey, DxKeys::keyLeftShift);
+    key_press(WinapiKeys::Slashkey, DxKeys::keyForwardSlash);  // /
+    key_up(WinapiKeys::SHIFTkey, DxKeys::keyLeftShift);
+    key_press(WinapiKeys::ENTERkey, DxKeys::keyEnter);
 }

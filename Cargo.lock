@@ -382,6 +382,8 @@ version = "0.1.0"
 dependencies = [
  "enigo",
  "reqwest",
+ "serde_json",
+ "winapi",
 ]
 
 [[package]]
