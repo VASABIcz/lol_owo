@@ -7,6 +7,5 @@ edition = "2021"
 
 [dependencies]
 reqwest = { version = "0.11.9", features = ["blocking"] }
-enigo = "0.0.14"
 serde_json = "1.0"
-winapi = "0.3.9"
+winapi = { varsion = "0.3.9", features = ["winuser"] }

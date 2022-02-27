@@ -1,3 +1,5 @@
+#![allow(non_camel_case_types)]
+#![allow(dead_code)]
 use winapi::um::winuser::{INPUT, INPUT_KEYBOARD, INPUT_u, KEYBDINPUT, SendInput};
 
 use std::thread::sleep;

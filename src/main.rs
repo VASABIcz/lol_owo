@@ -1,16 +1,10 @@
 mod keyboard_api;
 
 use std::fmt::Write;
-use std::thread::sleep;
-use std::time::Duration;
 use reqwest::blocking::{Client, ClientBuilder};
 use reqwest::Certificate;
-use serde_json::{Result, Value};
-use winapi::um::winuser::{INPUT, INPUT_KEYBOARD, INPUT_u, KEYBDINPUT, SendInput};
+use serde_json::{Value};
 use crate::keyboard_api::{DxKeys, key_down, key_press, key_up, WinapiKeys};
-
-const KEYUP: u32 = 0x0002;
-const KEYDW: u32 = 0x0;
 
 extern "win64" {
     pub fn GetForegroundWindow() -> i32;
